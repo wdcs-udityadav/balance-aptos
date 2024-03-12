@@ -1,0 +1,16 @@
+[package]
+name = "Balance"
+version = "1.0.0"
+authors = []
+
+[addresses]
+BalanceAt = "0x53eb9c4f83564611974b1276c313f809224179c4465849382f3a7e8c511caf6f"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dev-dependencies]
