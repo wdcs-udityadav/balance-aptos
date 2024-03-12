@@ -1,5 +1,6 @@
 module BalanceAt::Balance{
     use std::coin;
+    use std::debug::print;
     use std::account;
     use std::aptos_account;
     use std::aptos_coin::{AptosCoin};
@@ -119,5 +120,70 @@ module BalanceAt::Balance{
 
         let resource_signer = account::create_signer_with_capability(&white_list.signer_cap);
         aptos_account::transfer(&resource_signer, client_address, amount);
+    }
+
+    #[test_only]
+    public fun test_setup(resource_acc: &signer, origin: &signer, aptos_framework: &signer){
+        account::create_account_for_test(signer::address_of(origin));
+        resource_account::create_resource_account(origin, vector[1u8,2u8,3u8,4], vector::empty());
+        let (burn_cap, mint_cap) = aptos_framework::aptos_coin::initialize_for_test(aptos_framework);
+        init_module(resource_acc);
+
+
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
+    }
+
+    #[test(resource_account=@BalanceAt,origin=@Origin,aptos_framework=@0x1)]
+    public fun test_balance(resource_account: &signer, origin: &signer, aptos_framework: &signer)
+    //  acquires WhiteList
+      {
+        
+        test_setup(resource_account, origin, aptos_framework);
+        assert!(exists<WhiteList>(@BalanceAt), 9);
+
+
+        // let stored_at = signer::address_of(resource_account);
+        // print(&stored_at);
+        // let client1 = account::create_account_for_test(@0x45);
+        // let client2 = account::create_account_for_test(@0x46);
+        
+        // // initialization
+        // initialize(account);
+        // assert!(exists<WhiteList>(stored_at), 9);
+
+        // // adding single client to whitelist
+        // add_to_whitelist(account, signer::address_of(&client1));
+        // assert!(simple_map::length(&borrow_global<WhiteList>(stored_at).balance_map)==1, 9);
+
+        // // removing single client from whitelist
+        // remove_from_whitelist(account, signer::address_of(&client1));
+        // assert!(simple_map::length(&borrow_global<WhiteList>(stored_at).balance_map)==0, 9);
+
+        // // adding multiple clients to whitelist
+        // let list_add = vector<address>[@0x11,@0x12,@0x13,@0x14,@0x15];
+        // add_many_to_whitelist(account, list_add);
+        // assert!(simple_map::length(&borrow_global<WhiteList>(stored_at).balance_map)==5, 9);
+
+        // // removing multiple clients from whitelist
+        // let list_remove = vector<address>[@0x13,@0x11,@0x15];
+        // remove_many_from_whitelist(account, list_remove);
+        // assert!(simple_map::length(&borrow_global<WhiteList>(stored_at).balance_map)==2, 9);
+
+        // // deposit
+        // let client2_address = signer::address_of(&client2);
+        // add_to_whitelist(account, client2_address);
+        // assert!(simple_map::length(&borrow_global<WhiteList>(stored_at).balance_map)==3, 9);
+        
+        // coin::register<AptosCoin>(&client2);
+        // aptos_coin::mint(aptos_framework, client2_address,100);
+        // deposit(account, &client2, 80);
+        // assert!(get_balance(stored_at, client2_address)==80,9);
+
+        // // withdraw
+        // withdraw(account, &client2, 20);
+        // assert!(get_balance(stored_at, client2_address)==60,9);
+
+       
     }
 }
