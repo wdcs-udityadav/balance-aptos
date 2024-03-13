@@ -65,7 +65,7 @@ module BalanceAt::Balance{
     #[view]
     public fun get_balance(client: address):u64 acquires WhiteList {
         assert!(is_whitelisted(client), error::not_found(E_CLIENT_NOT_WHITELISTED));
-        
+
         let white_list = borrow_global<WhiteList>(@BalanceAt);
         *simple_map::borrow(&white_list.balance_map, &client)
     }
@@ -173,7 +173,7 @@ module BalanceAt::Balance{
     }
 
     #[test_only]
-    public fun test_setup(origin: &signer, aptos_framework: &signer){
+    fun test_setup(origin: &signer, aptos_framework: &signer){
         let origin_address = signer::address_of(origin);
         let resource_address = account::create_resource_address(&origin_address, x"01");
 
@@ -187,8 +187,8 @@ module BalanceAt::Balance{
         coin::destroy_mint_cap(mint_cap);
     }
 
-    #[test(origin=@Origin,aptos_framework=@0x1)]
-    public fun test_balance(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_balance(origin: &signer, aptos_framework: &signer) acquires WhiteList {
         test_setup(origin, aptos_framework);
         assert!(exists<WhiteList>(@BalanceAt), error::invalid_state(E_UNINITIALIZED));
 
@@ -241,5 +241,71 @@ module BalanceAt::Balance{
             withdrawn_by: client2_address,
             amount: 20
         }), 9); 
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 327682, location = Self)]
+    fun test_add_client_fail_if_not_owner(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+
+        let user = account::create_account_for_test(@0x21);
+        add_to_whitelist(&user, @0x22);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_add_client(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let client = @0x22;
+        add_to_whitelist(origin, client);
+        assert!(is_whitelisted(client), error::not_found(E_CLIENT_NOT_WHITELISTED));
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 393219, location = Self)]
+    fun test_remove_client_fail_if_not_whitelisted(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+
+        remove_from_whitelist(origin, @0x22);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_remove_client(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let client = @0x22;
+        add_to_whitelist(origin, client);
+        assert!(is_whitelisted(client), error::not_found(E_CLIENT_NOT_WHITELISTED));
+
+        remove_from_whitelist(origin, client);
+        assert!(!is_whitelisted(client), error::not_implemented(1));
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 393219, location = Self)]
+    fun test_deposit_fail_if_not_whitelisted(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let user = account::create_account_for_test(@0x22);
+        assert!(!is_whitelisted(signer::address_of(&user)), error::not_implemented(1));
+
+        coin::register<AptosCoin>(&user);
+        aptos_coin::mint(aptos_framework, signer::address_of(&user), 100);
+        deposit(&user, 40);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_deposit(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let user = account::create_account_for_test(@0x22);
+        let user_address = signer::address_of(&user);
+        add_to_whitelist(origin, user_address);
+        assert!(is_whitelisted(user_address), error::not_found(E_CLIENT_NOT_WHITELISTED));
+
+        coin::register<AptosCoin>(&user);
+        aptos_coin::mint(aptos_framework, user_address, 100);
+        deposit(&user, 40);
+        assert!(get_balance(user_address)==40, error::internal(2));
     }
 }
