@@ -52,10 +52,6 @@ module BalanceAt::Balance{
         assert!(account_address==@Origin, error::permission_denied(E_NOT_OWNER));
     }
 
-    fun assert_initialized() {
-        assert!(exists<WhiteList>(@BalanceAt), error::invalid_state(E_UNINITIALIZED));
-    }
-
     #[view]
     public fun is_whitelisted(client: address):bool acquires WhiteList {
         let white_list = borrow_global<WhiteList>(@BalanceAt);
@@ -81,7 +77,6 @@ module BalanceAt::Balance{
 
     public entry fun add_to_whitelist(account: &signer, client: address) acquires WhiteList {
         assert_is_owner(signer::address_of(account));
-        assert_initialized();       
         assert!(!is_whitelisted(client), error::already_exists(E_CLIENT_ALREADY_WHITELISTED));
 
         simple_map::add(&mut borrow_global_mut<WhiteList>(@BalanceAt).balance_map, client, 0);
@@ -92,7 +87,6 @@ module BalanceAt::Balance{
 
     public entry fun add_many_to_whitelist(account: &signer, clients: vector<address>) acquires WhiteList {
         assert_is_owner(signer::address_of(account));
-        assert_initialized();
 
         let white_list = borrow_global_mut<WhiteList>(@BalanceAt);
         while(!vector::is_empty(&clients)){
@@ -109,8 +103,6 @@ module BalanceAt::Balance{
     public entry fun remove_from_whitelist(account: &signer, client: address) acquires WhiteList{
         let account_address = signer::address_of(account);
         assert_is_owner(account_address);
-        assert_initialized();
-
         assert!(is_whitelisted(client), error::not_found(E_CLIENT_NOT_WHITELISTED));
 
         simple_map::remove(&mut borrow_global_mut<WhiteList>(@BalanceAt).balance_map, &client);
@@ -122,7 +114,6 @@ module BalanceAt::Balance{
     public entry fun remove_many_from_whitelist(account: &signer, clients: vector<address>) acquires WhiteList {
         let account_address = signer::address_of(account);
         assert_is_owner(account_address);
-        assert_initialized();
 
         let white_list = borrow_global_mut<WhiteList>(@BalanceAt);
         while(!vector::is_empty(&clients)){
@@ -198,49 +189,49 @@ module BalanceAt::Balance{
         // adding single client to whitelist
         let client1_address = signer::address_of(&client1);
         add_to_whitelist(origin, client1_address);
-        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==1, 9);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==1, error::internal(1));
         assert!(event::was_event_emitted<Whitelisted>(&Whitelisted{
             client_added: client1_address
-        }), 9);
+        }), error::not_implemented(2));
 
         // removing single client from whitelist
         remove_from_whitelist(origin, client1_address);
-        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==0, 9);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==0, error::internal(1));
         assert!(event::was_event_emitted<RemovedFromWhitelist>(&RemovedFromWhitelist{
             client_removed: client1_address
-        }), 9);
+        }), error::not_implemented(2));
 
         // adding multiple clients to whitelist
         let list_add = vector<address>[@0x11,@0x12,@0x13,@0x14,@0x15];
         add_many_to_whitelist(origin, list_add);
-        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==5, 9);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==5, error::internal(1));
 
         // removing multiple clients from whitelist
         let list_remove = vector<address>[@0x13,@0x11,@0x15];
         remove_many_from_whitelist(origin, list_remove);
-        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==2, 9);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==2, error::internal(1));
 
         // deposit funds
         let client2_address = signer::address_of(&client2);
         add_to_whitelist(origin, client2_address);
-        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==3, 9);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==3, error::internal(1));
         
         coin::register<AptosCoin>(&client2);
         aptos_coin::mint(aptos_framework, client2_address,100);
         deposit(&client2, 80);
-        assert!(get_balance(client2_address)==80,9);
+        assert!(get_balance(client2_address)==80, error::internal(3));
         assert!(event::was_event_emitted<Deposited>(&Deposited{
             deposited_by: client2_address,
             amount: 80
-        }), 9);
+        }), error::not_implemented(2));
 
         // withdraw funds
         withdraw(&client2, 20);
-        assert!(get_balance(client2_address)==60,9);
+        assert!(get_balance(client2_address)==60, error::internal(3));
         assert!(event::was_event_emitted<Withdrawn>(&Withdrawn{
             withdrawn_by: client2_address,
             amount: 20
-        }), 9); 
+        }), error::not_implemented(2)); 
     }
 
     #[test(origin = @Origin, aptos_framework = @0x1)]
@@ -262,6 +253,37 @@ module BalanceAt::Balance{
     }
 
     #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_add_multiple_clients(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let clients = vector<address>[@0x31,@0x32,@0x33];
+        add_many_to_whitelist(origin, clients);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==3, error::internal(1));
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 524292, location = Self)]
+    fun test_add_client_fail_if_already_whitelisted(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+
+        let client = @0x22;
+        add_to_whitelist(origin, client);
+        add_to_whitelist(origin, client);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 327682, location = Self)]
+    fun test_remove_client_fail_if_not_owner(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        add_to_whitelist(origin, @0x22);
+        assert!(is_whitelisted(@0x22), error::not_found(E_CLIENT_NOT_WHITELISTED));
+        
+        let user = account::create_account_for_test(@0x21);
+        remove_from_whitelist(&user, @0x22);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
     #[expected_failure(abort_code = 393219, location = Self)]
     fun test_remove_client_fail_if_not_whitelisted(origin: &signer, aptos_framework: &signer) acquires WhiteList {
         test_setup(origin, aptos_framework);
@@ -278,7 +300,20 @@ module BalanceAt::Balance{
         assert!(is_whitelisted(client), error::not_found(E_CLIENT_NOT_WHITELISTED));
 
         remove_from_whitelist(origin, client);
-        assert!(!is_whitelisted(client), error::not_implemented(1));
+        assert!(!is_whitelisted(client), error::not_implemented(4));
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_remove_multiple_clients(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let clients_add = vector<address>[@0x31,@0x32,@0x33];
+        add_many_to_whitelist(origin, clients_add);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==3, error::internal(1));
+
+        let clients_remove = vector<address>[@0x31,@0x33];
+        remove_many_from_whitelist(origin, clients_remove);
+        assert!(simple_map::length(&borrow_global<WhiteList>(@BalanceAt).balance_map)==1, error::internal(1));
     }
 
     #[test(origin = @Origin, aptos_framework = @0x1)]
@@ -287,11 +322,26 @@ module BalanceAt::Balance{
         test_setup(origin, aptos_framework);
         
         let user = account::create_account_for_test(@0x22);
-        assert!(!is_whitelisted(signer::address_of(&user)), error::not_implemented(1));
+        assert!(!is_whitelisted(signer::address_of(&user)), error::not_implemented(4));
 
         coin::register<AptosCoin>(&user);
         aptos_coin::mint(aptos_framework, signer::address_of(&user), 100);
         deposit(&user, 40);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 65541, location = Self)]
+    fun test_deposit_fail_unsufficient_balance(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let user = account::create_account_for_test(@0x22);
+        let user_address = signer::address_of(&user);
+        add_to_whitelist(origin, user_address);
+        assert!(is_whitelisted(user_address), error::not_found(E_CLIENT_NOT_WHITELISTED));
+
+        coin::register<AptosCoin>(&user);
+        aptos_coin::mint(aptos_framework, signer::address_of(&user), 100);
+        deposit(&user, 200);
     }
 
     #[test(origin = @Origin, aptos_framework = @0x1)]
@@ -306,6 +356,51 @@ module BalanceAt::Balance{
         coin::register<AptosCoin>(&user);
         aptos_coin::mint(aptos_framework, user_address, 100);
         deposit(&user, 40);
-        assert!(get_balance(user_address)==40, error::internal(2));
+        assert!(get_balance(user_address)==40, error::internal(3));
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 393219, location = Self)]
+    fun test_withdraw_fail_if_not_whitelisted(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+        
+        let user = account::create_account_for_test(@0x22);
+        withdraw(&user,20);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    #[expected_failure(abort_code = 65541, location = Self)]
+    fun test_withdraw_fail_unsufficient_balance(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+
+        let user = account::create_account_for_test(@0x22);
+        let user_address = signer::address_of(&user);
+        add_to_whitelist(origin, user_address);
+        assert!(is_whitelisted(user_address), error::not_found(E_CLIENT_NOT_WHITELISTED));
+
+        coin::register<AptosCoin>(&user);
+        aptos_coin::mint(aptos_framework, user_address, 100);
+        deposit(&user, 40);
+        assert!(get_balance(user_address)==40, error::internal(3));
+
+        withdraw(&user, 50);
+    }
+
+    #[test(origin = @Origin, aptos_framework = @0x1)]
+    fun test_withdraw(origin: &signer, aptos_framework: &signer) acquires WhiteList {
+        test_setup(origin, aptos_framework);
+
+        let user = account::create_account_for_test(@0x22);
+        let user_address = signer::address_of(&user);
+        add_to_whitelist(origin, user_address);
+        assert!(is_whitelisted(user_address), error::not_found(E_CLIENT_NOT_WHITELISTED));
+
+        coin::register<AptosCoin>(&user);
+        aptos_coin::mint(aptos_framework, user_address, 100);
+        deposit(&user, 40);
+        assert!(get_balance(user_address)==40, error::internal(3));
+
+        withdraw(&user, 40);
+        assert!(get_balance(user_address)==0, error::internal(3));
     }
 }
