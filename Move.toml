@@ -8,6 +8,8 @@ BalanceAt = "_"
 Origin = "_"
 
 [dev-addresses]
+BalanceAt = "0x5fbbca527a63ea7dd10d1baed636b6e3bfc5c67aa5adef07dcc0115bd0a2ddde"
+Origin = "0x6aeda875d42a6ebf695381cbc7695f9854a8089c243248a5d04f74fe54620344"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "mainnet" }
