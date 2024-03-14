@@ -1,4 +1,7 @@
 module BalanceAt::Balance{
+    use std::bls12381::{Signature, PublicKey, Self}; 
+    use std::debug::print;
+    use std::option::{Self, Option};
     use std::coin;
     use std::error;
     use std::event;
@@ -161,6 +164,16 @@ module BalanceAt::Balance{
             withdrawn_by: client_address,
             amount
         });
+    }
+
+    // signature verification
+    public fun verify_sig(signature: vector<u8>, public_key: vector<u8>, message: vector<u8>):bool {
+        let is_valid = bls12381::verify_normal_signature(
+            &bls12381::signature_from_bytes(signature), 
+            &option::extract(&mut bls12381::public_key_from_bytes(public_key)), 
+            message
+        );
+        is_valid
     }
 
     #[test_only]
@@ -402,5 +415,16 @@ module BalanceAt::Balance{
 
         withdraw(&user, 40);
         assert!(get_balance(user_address)==0, error::internal(3));
+    }
+
+    // test signature verification
+    #[test]
+    public fun test_signature() {
+        let signature = vector<u8>[128,201,160,126,35,212,230,128,78,144,5,254,254,83,192,186,93,17,60,49,98,107,221,46,170,204,157,195,232,5,210,22,183,22,119,71,25,36,62,16,0,206,203,107,17,123,119,203,23,161,28,159,150,189,173,177,104,165,159,13,37,169,57,45,98,98,201,242,29,245,111,185,190,243,7,226,26,194,201,199,220,54,147,222,177,243,159,236,106,1,107,200,116,114,195,111];
+        let pub_key = vector<u8>[182,66,53,211,4,186,224,64,62,231,162,102,99,204,196,203,21,28,138,169,84,85,72,205,20,239,105,158,36,181,14,179,196,129,43,79,191,111,13,252,24,159,217,9,230,177,171,166];
+        let mssg = vector<u8>[1,2,3,4];
+        let is_valid = verify_sig(signature, pub_key, mssg);
+        // print(&is_valid);
+        assert!(is_valid, 9);
     }
 }
