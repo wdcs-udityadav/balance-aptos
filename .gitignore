@@ -135,5 +135,6 @@ test_indexer_grpc/*
 *.bytecode
 !third_party/move/move-prover/tests/xsources/design/*.bytecode
 
-# Build output directory
-dist/
+# Added by cargo
+
+/target
